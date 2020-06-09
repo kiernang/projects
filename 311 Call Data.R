@@ -20,4 +20,11 @@ group_by(neighbourhood) %>%
 tally() %>%
 top_n(5)
 ggplot(most_calls, aes(neighbourhood, n)) + geom_col(fill = "deepskyblue4") + labs( x = "Neighbourhood", y = "Number of Calls to 311", title = "Calls to 311 by Neighbourhood, 2018 - 2019")
-
+#Okay, so William Whyte has by far the most amount of calls to 311. Let's see what's the deal there.
+will_whyte <- calls311[calls311$neighbourhood=="William Whyte",]
+will_whyte_most <- will_whyte %>%
+group_by(service_request) %>%
+tally() %>%
+top_n(5)
+wwplot <- ggplot(will_whyte_most, aes(service_request, n)) + geom_col( fill = "#0072B2") + labs( x = "Type of Complaint", y = "Number of Calls to 311", title = "William Whyte 311 Calls, 2018 - 2019")
+wwplot + theme(axis.text.x = element_text(face = "bold", color = "#993333", size = 8, angle = 20, hjust = 1))
