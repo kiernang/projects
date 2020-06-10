@@ -3,6 +3,8 @@ library(dplyr)
 library(wesanderson)
 library(ggplot2)
 library(ggpubr)
+library(readr)
+library(ggpattern)
 #I've downloaded a list of 311 (City Services) calls from the City of Winnipeg's open data site
 calls311 <- read_csv("~/Downloads/311_Service_Request.csv")
 #Few issues. One: there are spaces in variable names; Two: the coordinates are jumbled.
@@ -44,17 +46,21 @@ cityplot + theme(axis.text.x = element_text(face = "bold", color = "#993333", si
 # Going to subset for these categories plus graffiti. To do this I'll use a for loop.
 call_types <- top_city$service_request_new
 call_types <- append(call_types, "Graffiti", after = 5)
-for (i in call_types){ count <- count +1
+for (i in call_types){
   x <- calls311[calls311$service_request_new == i,] %>%
   group_by(neighbourhood) %>%
   tally() %>%
   top_n(5)
   nameStuff <- gsub(" ","_", i)
   nameStuff <-tolower(nameStuff)
-  p <- ggplot(x, aes(x$neighbourhood, x$n)) + geom_col( fill = "#0072B2") + labs( x = paste(i, "calls by Neighbourhood"), y = "Number of Calls to 311", title = paste(i, "calls, 2018-2019"))  
+  p <- ggplot(x, aes(x = neighbourhood, y = n)) + geom_col( fill = "#0072B2") + labs( x = "Neighbourhood", y = "Number of Calls to 311", title = paste(i, "calls, 2018-2019"))  
   assign(paste0(nameStuff,"_calls"),x)
   assign(paste0(nameStuff, "_plot"),p)
 
 }
+# Now to lay them out
+ggarrange(missed_household_waste_pickup_plot, neighbourhood_liveability_complaint_plot, nrow = 2)
+ggarrange(potholes_plot, `snow_removal_-_roads_plot`, nrow = 2)
+ggarrange(water_main_leak_plot, graffiti_plot, nrow = 2)
 
-ggarrange(missed_household_waste_pickup_plot, ggarrange(neighbourhood_liveability_complaint_plot, potholes_plot))
+# Now to use ggpattern on a few of them. Thanks to https://coolbutuseless.github.io/package/ggpattern/
