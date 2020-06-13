@@ -64,3 +64,9 @@ ggarrange(potholes_plot, `snow_removal_-_roads_plot`, nrow = 2)
 ggarrange(water_main_leak_plot, graffiti_plot, nrow = 2)
 
 # Now to use ggpattern on a few of them. Thanks to https://coolbutuseless.github.io/package/ggpattern/
+garbageplot2 <- ggplot(missed_household_waste_pickup_calls, aes(neighbourhood,n)) +geom_col_pattern(pattern = 'image', pattern_filename = "/Users/KiernanGange/Pictures/photoshopstuff/garbage_pattern1.png", pattern_type ='tile', colour = 'black')
+garbageplot2 + labs(x = "Neighbourhood", y = "Number of calls", title = "Calls to 311 for Missed Waste Pickup Complaints") + theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+potholesplot2 <-ggplot(potholes_calls, aes(neighbourhood,n)) +geom_col_pattern(pattern = 'image', pattern_filename = "/Users/KiernanGange/Pictures/photoshopstuff/construction_pattern.jpg", pattern_type ='tile', colour = 'black', pattern_scale = 0.1)                                                                                                                                      
+potholesplot2 + labs(x = "Neighbourhood", y = "Number of calls", title = "Calls to 311 for Pothole Complaints") + theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+graffitiplot2 <- ggplot(graffiti_calls, aes(neighbourhood,n)) +geom_col_pattern(pattern = 'image', pattern_filename = "/Users/KiernanGange/Pictures/photoshopstuff/graffiti_seamless.jpg", pattern_type ='tile', colour = 'black', pattern_scale = 0.1)
+graffitiplot2 +labs(x = "Neighbourhood", y = "Number of calls", title = "Calls to 311 for Graffiti Complaints") + theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
