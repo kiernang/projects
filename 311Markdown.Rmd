@@ -8,21 +8,158 @@ output: html_document
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+```{r include=FALSE}
+library(tidyr)
+library(dplyr)
+library(wesanderson)
+library(ggplot2)
+library(ggpubr)
+library(readr)
+library(ggpattern)
+library(purrr)
+library(broom)
+library(formattable)
+#I've downloaded a list of 311 (City Services) calls from the City of Winnipeg's open data site
+#calls311 <- read_csv("~/Downloads/311_Service_Request.csv") Old, pre-emptive test file.
+ calls311 <-read_csv("~/Downloads/311_Service_Request201819.csv")
+#Few issues. One: there are spaces in variable names; Two: the coordinates are jumbled.
+# Additionally, I personally find it annoying when variable names are not in lowercase
+names(calls311) <- tolower(names(calls311))
+names(calls311) <- gsub(' ', '_', names(calls311))
+# Now that the variable names are cleaned up, onto cleaning up the coordinate data
+# A quicker way to do this is to just use a nested gsub command
+calls311$location_1 <- gsub('\\)','',gsub('\\(','',calls311$location_1))
+calls311<- calls311 %>%
+separate(location_1, c('latitude','longitude'), ', ')
+calls311$date <- as.POSIXct(calls311$date, tz = "America/Winnipeg", "%m/%d/%Y %I:%M:%S %p")
+# Cool, now we can just see which neighbourhoods called 311 the most
+most_calls <- calls311 %>%
+group_by(neighbourhood) %>%
+tally() %>%
+top_n(5)
+# ggplot(most_calls, aes(neighbourhood, n)) + geom_col(fill = "deepskyblue4") + labs( x = "Neighbourhood", y = "Number of Calls to 311", title = "Calls to 311 by Neighbourhood, 2018 - 2019")
+#Okay, so William Whyte has by far the most amount of calls to 311. Let's see what's the deal there.
+calls311$service_request_new <- calls311$service_request
+calls311$service_request_new[calls311$service_request_new == ("Missed Garbage Collection")] <- "Missed Household Waste Pickup"
+calls311$service_request_new[calls311$service_request_new == ("Missed Recycling Collection")] <- "Missed Household Waste Pickup"
+will_whyte <- calls311[calls311$neighbourhood=="William Whyte",]
+will_whyte_most <- will_whyte %>%
+group_by(service_request_new) %>%
+tally() %>%
+top_n(5)
+wwplot <- ggplot(will_whyte_most, aes(service_request_new, n)) + geom_col( fill = "#0072B2") + labs( x = "Type of Complaint", y = "Number of Calls to 311", title = "William Whyte 311 Calls, 2018 - 2019")
+# wwplot + theme(axis.text.x = element_text(face = "bold", color = "#993333", size = 8, angle = 20, hjust = 1))
+#We'll cycle back to this later. For now, let's see what are the worst categories for the entire city
+# From W.W. we can see that recycling and garbage make up large groups on their own - going to merge them due to their similarity
 
+# Looking at the top categories in the city
+top_city <-calls311 %>%
+group_by(service_request_new) %>%
+tally() %>%
+top_n(5)
+cityplot <- ggplot(top_city, aes(service_request_new, n)) + geom_col( fill = "#0072B2") + labs( x = "Type of Complaint", y = "Number of Calls to 311", title = "City Wide 311 calls, 2018 - 2019")
+# cityplot + theme(axis.text.x = element_text(face = "bold", color = "#993333", size = 6, angle = 20, hjust = 1))
+# Going to subset for these categories plus graffiti. To do this I'll use a for loop.
+call_types <- top_city$service_request_new
+call_types <- append(call_types, "Graffiti", after = 5)
+for (i in call_types){
+  x <- calls311[calls311$service_request_new == i,] %>%
+  group_by(neighbourhood) %>%
+  tally() %>%
+  top_n(5)
+  nameStuff <- gsub(" ","_", i)
+  nameStuff <-tolower(nameStuff)
+  p <- ggplot(x, aes(x = neighbourhood, y = n)) + geom_col( fill = "#0072B2") + labs( x = "Neighbourhood", y = "Number of Calls to 311", title = paste(i, "calls, 2018-2019"))  
+  assign(paste0(nameStuff,"_calls"),x)
+  assign(paste0(nameStuff, "_plot"),p)
+
+}
+# Now to lay them out
+#ggarrange(missed_household_waste_pickup_plot, neighbourhood_liveability_complaint_plot, nrow = 2)
+#ggarrange(potholes_plot, `snow_removal_-_roads_plot`, nrow = 2)
+#ggarrange(water_main_leak_plot, graffiti_plot, nrow = 2)
+
+# Now to use ggpattern on a few of them. Thanks to https://coolbutuseless.github.io/package/ggpattern/
+garbageplot2 <- ggplot(missed_household_waste_pickup_calls, aes(neighbourhood,n)) +geom_col_pattern(pattern = 'image', pattern_filename = "/Users/KiernanGange/Pictures/photoshopstuff/garbage_pattern1.png", pattern_type ='tile', colour = 'black')
+#garbageplot2 + labs(x = "Neighbourhood", y = "Number of calls", title = "Calls to 311 for Missed Waste Pickup Complaints") + theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+potholesplot2 <-ggplot(potholes_calls, aes(neighbourhood,n)) +geom_col_pattern(pattern = 'image', pattern_filename = "/Users/KiernanGange/Pictures/photoshopstuff/construction_pattern.jpg", pattern_type ='tile', colour = 'black', pattern_scale = 0.1)                                                                                                                                      
+#potholesplot2 + labs(x = "Neighbourhood", y = "Number of calls", title = "Calls to 311 for Pothole Complaints") + theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+graffitiplot2 <- ggplot(graffiti_calls, aes(neighbourhood,n)) +geom_col_pattern(pattern = 'image', pattern_filename = "/Users/KiernanGange/Pictures/photoshopstuff/graffiti_seamless.jpg", pattern_type ='tile', colour = 'black', pattern_scale = 0.1)
+#graffitiplot2 +labs(x = "Neighbourhood", y = "Number of calls", title = "Calls to 311 for Graffiti Complaints") + theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+# Just for t-test stuff
+test_set <- calls311 %>%
+group_by(neighbourhood, service_request) %>%
+tally()
+# t.test(test_set$n[test_set$service_request == 'Missed Garbage Collection'], test_set$n[test_set$service_request=='Missed Recycling Collection'])
+```
 ## Background
 
-With the onset of the Coronavirus and consequent lockdown, most of the work that I was doing dried up. Since the plan was always to teach and do odd jobs for the current year, this wasn't the biggest deal, but it still left me with a surplus of free time. Additionally, although it wasn't the end of the world to have to look for a job a little earlier than I wanted, the job market is pretty brutal right now and it's difficult to compete and stand out amongst so many applicants. With that in mind, I figured that it would probably be a better and more productive use of my time to practice relevant skills and processes that are useful as a data scientist / anaylst rather than trying to push out 15 cover letters a day to jobs that won't even look at my application. 
+With the onset of the Coronavirus and consequent lock down, most of the work that I was doing dried up. Since the plan was always to teach and do odd jobs for the current year, this wasn't the biggest deal, but it still left me with a surplus of free time. Additionally, although it wasn't the end of the world to have to look for a job a little earlier than I wanted, the job market is pretty brutal right now and it's difficult to compete and stand out among so many applicants. With that in mind, I figured that it would probably be a better and more productive use of my time to practice relevant skills and processes that are useful as a data scientist / analyst rather than trying to push out 15 cover letters a day to jobs that won't even look at my application. 
 
 ## The Data
-The City of Winnipeg has an open data library that contains geo-coded (albeit scrambled) data on 311 calls for a number of years. For anyone that doesn't know, 311 is the code for Winnipeg City Services. Things such as missed garbage pickups, graffiti complaints, neighbourhood liveability complaints, or other complaints that require municipal government action.  Here's the complete list and number of all the complaints. 
+The City of Winnipeg has an open data library that contains geo-coded (albeit scrambled) data on 311 calls for a number of years. For anyone that doesn't know, 311 is the code for Winnipeg City Services. Things such as missed garbage pickups, graffiti complaints, neighbourhood livability complaints, or other complaints that require municipal government action.  Here's the complete list and number of all the complaints. 
 ```{r, echo = FALSE}
-table(calls311$service_request)
+table1 <-as.data.frame(table(calls311$service_request))
+names(table1)<- c('Complaint Type', 'Number of Complaints')
+formattable(table1)
+
 ```
 # Dividing 311 calls by Neighbourhood
-One question that I find worth asking from this dataset is as follows: "Does the neighbourhood you live in determine how you demand City Services?". There are a few ways of thinking about this. On one hand, you could say that as people become wealthier they will have higher expectations for what their municipal tax dollars can do for them. In economics-speak, we would say "complaints are a normal good", or, that complaints rise with income. It could also be the case that as people become wealthier and have more leisure time, they tend to be more willing to spend some of that leisure time calling 311. This story is consistent with the idea of an elderly neighbour being nitpicky or overusing the 311 service line - in other words, a "narc". 
+One question that I find worth asking from this data set is as follows: "Does the neighbourhood you live in determine how you demand City Services?". There are a few ways of thinking about this. On one hand, you could say that as people become wealthier they will have higher expectations for what their municipal tax dollars can do for them. In economics-speak, we would say "complaints are a normal good", or, that complaints rise with income. It could also be the case that as people become wealthier and have more leisure time, they tend to be more willing to spend some of that leisure time calling 311. This story is consistent with the idea of an elderly neighbour being nitpicky or overusing the 311 service line - in other words, a "narc". 
 
-On the other hand, a higher number of 311 calls could be representative of a neighbourhood that is underserved or ignored by City departments. For example, in a neighbourhood that is properly served by City departments, a caller only has to notify the City of an issue once before the City responds and addresses the complaint. Meanwhile, in a neighbourhood that is underserved by the City, multiple callers may notify the City about the same complaint multiple times until the complaint is addresssed. If we were to suppose that neighbourhoods with lower levels of income also have a larger number of calls to 311, this could be indicative that these neighbourhoods are underserved by City services. This is concerning as it would indicate that the political influence of individual citizens in Winnipeg is split along economic lines, and that being a resident of a wealthier neighbourhood guarantees you better access to City services.
+On the other hand, a higher number of 311 calls could be representative of a neighbourhood that is under-served or ignored by City departments. For example, in a neighbourhood that is properly served by City departments, a caller only has to notify the City of an issue once before the City responds and addresses the complaint. Meanwhile, in a neighbourhood that is under-served by the City, multiple callers may notify the City about the same complaint multiple times until the complaint is addressed. If we were to suppose that neighbourhoods with lower levels of income also have a larger number of calls to 311, this could be indicative that these neighbourhoods are under-served by City services. This is concerning as it would indicate that the political influence of individual citizens in Winnipeg is split along economic lines, and that being a resident of a wealthier neighbourhood guarantees you better access to City services.
 
 # Exploratory Analysis
-In order to answer this question I think it's important to first do some exporatory analysis of the data. Let's start with 
+In order to answer this question I think it's important to first do some exploratory analysis of the data. Before we really get started, I've noticed that "Missed Garbage Collection" and "Missed Recycling Collection" could easily be represented as "Missed Household Waste Collection". Although, if it's the case that every missed garbage collection corresponds to a missed recycling collection, merging these two into one category would effectively be double counting and over represent the number of missed household waste pickups. So, let's see if they're statistically different:
+```{r, echo=FALSE}
+t_test <-t.test(test_set$n[test_set$service_request == 'Missed Garbage Collection'], test_set$n[test_set$service_request=='Missed Recycling Collection'])
+tab <- map_df(list(t_test),tidy)
+tab <- dplyr::rename(tab, Difference = estimate ,  Garbage_Mean = estimate1 ,  Recycling_Mean =estimate2,  T_Stat = statistic)
+formattable(tab[c("Difference", "Garbage_Mean", "Recycling_Mean", "T_Stat", "p.value")])
 
+```
+It appears that when grouped by neighbourhood, the number of missed garbage pickups over the two year period is greater than the number of missed recycling pick ups. This means that a missed garbage pick up does not guarantee a missed recycling pick up. Let's take a look at how each different category of 311 call is related to one another. 
+```{r, echo= FALSE}
+library(ggcorrplot)
+cor_table_set <- spread(test_set, service_request, n)
+corr_matrix <- cor(cor_table_set[,2:17], use = "complete.obs")
+ggcorrplot(corr_matrix, hc.order = TRUE,  method = "square", type ="lower", outline.color = "white") + theme(axis.text.x = element_text(size = 10), axis.text.y = element_text(size = 10))
+
+```
+Looking at the correlation matrix we can see that recycling and garbage missed pick ups are strongly correlated with one another, while litter container complaints and tree caterpillar complaints are also strongly correlated with one another. Both of these make intuitive sense, as it is probably often the case that a missed garbage pick up is due to either user error (not putting the bins out) or other factors (weather or construction that make doing a route in the proper time impossible), and litter containers that the city is responsible for are often in parks and other wooded areas, where there are an abundance of canker worms.
+
+I'm going to make a merged category for both recycling and garbage collection and title it "Missed Household Waste Collection". I think that the distinction between recycling and garbage pick ups is somewhat arbitrary for the purpose of understanding the difference among neighbourhood service levels, so I feel like it's fine to lump the two together, however I would understand if someone were to feel like this creates bias in the analysis. 
+
+The dataset contains 235 different neighbourhoods, so I'm only going to graph the top 5 neighbourhoods and categories for ease of reading in the next few graphs.
+
+# Most calls to 311, by neighbourhood
+```{r, echo = FALSE}
+ ggplot(most_calls, aes(neighbourhood, n)) + geom_col(fill = "deepskyblue4") + labs( x = "Neighbourhood", y = "Number of Calls to 311", title = "Calls to 311 by Neighbourhood, 2018 - 2019")
+```
+We can see that the number of calls from William Whyte is almost double that of the next closest neighbourhood, St. Johns.
+```{r, echo = FALSE}
+ cityplot + theme(axis.text.x = element_text(face = "bold", color = "#993333", size = 6, angle = 20, hjust = 1))
+```
+We can also see that neighbourhood liveability complaints and missed household waste pickups dominate the number of calls to 311.
+```{r, echo= FALSE}
+wwplot + theme(axis.text.x = element_text(face = "bold", color = "#993333", size = 8, angle = 20, hjust = 1))
+```
+In William Whyte, the number of neighbourhood liveability complaints is astronomical when compared to the other categories. Here are the top 5 categories of complaints, as well as graffiti. It's important to note that the scale of the y-axis for each category changes for ease of readibility in each graph. 
+```{r, echo=FALSE}
+ggarrange(missed_household_waste_pickup_plot, neighbourhood_liveability_complaint_plot, nrow = 2)
+ggarrange(potholes_plot, `snow_removal_-_roads_plot`, nrow = 2)
+ggarrange(water_main_leak_plot, graffiti_plot, nrow = 2)
+```
+
+# Additional Graphs
+One category that I feel is near and dear to the average Winnipegger's heart is the poor condition of the roads in Winnipeg. Another few issues, if I were to think of someone like my Dad as the average Winnipegger, would be that the presence of graffiti is distasteful or that the trash not being picked up is a public policy failure.  (No offense to my dad, I'm sure he wouldn't really say that if you were to ask him, it's just easy to use him or someone of his age/demographic as a straw-man).
+With that being said, here are three additional graphs that are specially formatted for each respective issue:
+```{r, echo = FALSE}
+garbageplot2 + labs(x = "Neighbourhood", y = "Number of calls", title = "Calls to 311 for Missed Waste Pickup Complaints") + theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+potholesplot2 + labs(x = "Neighbourhood", y = "Number of calls", title = "Calls to 311 for Pothole Complaints") + theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+graffitiplot2 +labs(x = "Neighbourhood", y = "Number of calls", title = "Calls to 311 for Graffiti Complaints") + theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+```
+
+# Conclusion
+That's all I'm going to do for exploratory anaylsis. Next, I'm going to combine 2011 National Household Survey data on income, age, and family size with the existing data set to show the relationship between service level and household income. There are a number of data sets publicly available through the City of Winnipeg's [open data portal](https://data.winnipeg.ca/) that I'm going to be using throughout this series. Hopefully you enjoyed this article and stay tuned for the next part in this series.
