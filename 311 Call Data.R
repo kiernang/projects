@@ -6,7 +6,8 @@ library(ggpubr)
 library(readr)
 library(ggpattern)
 #I've downloaded a list of 311 (City Services) calls from the City of Winnipeg's open data site
-calls311 <- read_csv("~/Downloads/311_Service_Request.csv")
+#calls311 <- read_csv("~/Downloads/311_Service_Request.csv") Old, pre-emptive test file.
+ calls311 <-read_csv("~/Downloads/311_Service_Request201819.csv")
 #Few issues. One: there are spaces in variable names; Two: the coordinates are jumbled.
 # Additionally, I personally find it annoying when variable names are not in lowercase
 names(calls311) <- tolower(names(calls311))
@@ -70,3 +71,8 @@ potholesplot2 <-ggplot(potholes_calls, aes(neighbourhood,n)) +geom_col_pattern(p
 potholesplot2 + labs(x = "Neighbourhood", y = "Number of calls", title = "Calls to 311 for Pothole Complaints") + theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
 graffitiplot2 <- ggplot(graffiti_calls, aes(neighbourhood,n)) +geom_col_pattern(pattern = 'image', pattern_filename = "/Users/KiernanGange/Pictures/photoshopstuff/graffiti_seamless.jpg", pattern_type ='tile', colour = 'black', pattern_scale = 0.1)
 graffitiplot2 +labs(x = "Neighbourhood", y = "Number of calls", title = "Calls to 311 for Graffiti Complaints") + theme_bw() + theme(panel.border = element_blank(), panel.grid.major = element_blank(), panel.grid.minor = element_blank(), axis.line = element_line(colour = "black"))
+
+# Just for t-test stuff
+test_set <- calls311 %>%
+group_by(neighbourhood, service_request) %>%
+tally()

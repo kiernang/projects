@@ -1,0 +1,28 @@
+---
+title: "311 Calls by Neighbourhood"
+author: "Kiernan Gange"
+date: "13/06/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Background
+
+With the onset of the Coronavirus and consequent lockdown, most of the work that I was doing dried up. Since the plan was always to teach and do odd jobs for the current year, this wasn't the biggest deal, but it still left me with a surplus of free time. Additionally, although it wasn't the end of the world to have to look for a job a little earlier than I wanted, the job market is pretty brutal right now and it's difficult to compete and stand out amongst so many applicants. With that in mind, I figured that it would probably be a better and more productive use of my time to practice relevant skills and processes that are useful as a data scientist / anaylst rather than trying to push out 15 cover letters a day to jobs that won't even look at my application. 
+
+## The Data
+The City of Winnipeg has an open data library that contains geo-coded (albeit scrambled) data on 311 calls for a number of years. For anyone that doesn't know, 311 is the code for Winnipeg City Services. Things such as missed garbage pickups, graffiti complaints, neighbourhood liveability complaints, or other complaints that require municipal government action.  Here's the complete list and number of all the complaints. 
+```{r, echo = FALSE}
+table(calls311$service_request)
+```
+# Dividing 311 calls by Neighbourhood
+One question that I find worth asking from this dataset is as follows: "Does the neighbourhood you live in determine how you demand City Services?". There are a few ways of thinking about this. On one hand, you could say that as people become wealthier they will have higher expectations for what their municipal tax dollars can do for them. In economics-speak, we would say "complaints are a normal good", or, that complaints rise with income. It could also be the case that as people become wealthier and have more leisure time, they tend to be more willing to spend some of that leisure time calling 311. This story is consistent with the idea of an elderly neighbour being nitpicky or overusing the 311 service line - in other words, a "narc". 
+
+On the other hand, a higher number of 311 calls could be representative of a neighbourhood that is underserved or ignored by City departments. For example, in a neighbourhood that is properly served by City departments, a caller only has to notify the City of an issue once before the City responds and addresses the complaint. Meanwhile, in a neighbourhood that is underserved by the City, multiple callers may notify the City about the same complaint multiple times until the complaint is addresssed. If we were to suppose that neighbourhoods with lower levels of income also have a larger number of calls to 311, this could be indicative that these neighbourhoods are underserved by City services. This is concerning as it would indicate that the political influence of individual citizens in Winnipeg is split along economic lines, and that being a resident of a wealthier neighbourhood guarantees you better access to City services.
+
+# Exploratory Analysis
+In order to answer this question I think it's important to first do some exporatory analysis of the data. Let's start with 
+
