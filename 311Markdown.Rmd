@@ -131,7 +131,7 @@ Looking at the correlation matrix we can see that recycling and garbage missed p
 
 I'm going to make a merged category for both recycling and garbage collection and title it "Missed Household Waste Collection". I think that the distinction between recycling and garbage pick ups is somewhat arbitrary for the purpose of understanding the difference among neighbourhood service levels, so I feel like it's fine to lump the two together, however I would understand if someone were to feel like this creates bias in the analysis. 
 
-The dataset contains 235 different neighbourhoods, so I'm only going to graph the top 5 neighbourhoods and categories for ease of reading in the next few graphs.
+The data set contains 235 different neighbourhoods, so I'm only going to graph the top 5 neighbourhoods and categories for ease of reading in the next few graphs.
 
 # Most calls to 311, by neighbourhood
 ```{r, echo = FALSE}
@@ -141,11 +141,11 @@ We can see that the number of calls from William Whyte is almost double that of 
 ```{r, echo = FALSE}
  cityplot + theme(axis.text.x = element_text(face = "bold", color = "#993333", size = 6, angle = 20, hjust = 1))
 ```
-We can also see that neighbourhood liveability complaints and missed household waste pickups dominate the number of calls to 311.
+We can also see that neighbourhood livability complaints and missed household waste pickups dominate the number of calls to 311.
 ```{r, echo= FALSE}
 wwplot + theme(axis.text.x = element_text(face = "bold", color = "#993333", size = 8, angle = 20, hjust = 1))
 ```
-In William Whyte, the number of neighbourhood liveability complaints is astronomical when compared to the other categories. Here are the top 5 categories of complaints, as well as graffiti. It's important to note that the scale of the y-axis for each category changes for ease of readibility in each graph. 
+In William Whyte, the number of neighbourhood livability complaints is astronomical when compared to the other categories. Here are the top 5 categories of complaints, as well as graffiti. It's important to note that the scale of the y-axis for each category changes for ease of readability in each graph. 
 ```{r, echo=FALSE}
 ggarrange(missed_household_waste_pickup_plot, neighbourhood_liveability_complaint_plot, nrow = 2)
 ggarrange(potholes_plot, `snow_removal_-_roads_plot`, nrow = 2)
@@ -162,4 +162,4 @@ graffitiplot2 +labs(x = "Neighbourhood", y = "Number of calls", title = "Calls t
 ```
 
 # Conclusion
-That's all I'm going to do for exploratory anaylsis. Next, I'm going to combine 2011 National Household Survey data on income, age, and family size with the existing data set to show the relationship between service level and household income. There are a number of data sets publicly available through the City of Winnipeg's [open data portal](https://data.winnipeg.ca/) that I'm going to be using throughout this series. Hopefully you enjoyed this article and stay tuned for the next part in this series.
+That's all I'm going to do for exploratory analysis. Next, I'm going to combine 2011 National Household Survey data on income, age, and family size with the existing data set to show the relationship between service level and household income. There are a number of data sets publicly available through the City of Winnipeg's [open data portal](https://data.winnipeg.ca/) that I'm going to be using throughout this series. Hopefully you enjoyed this article and stay tuned for the next part in this series.
