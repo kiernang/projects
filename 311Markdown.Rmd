@@ -106,11 +106,13 @@ formattable(table1)
 
 ```
 # Dividing 311 calls by Neighbourhood
+
 One question that I find worth asking from this data set is as follows: "Does the neighbourhood you live in determine how you demand City Services?". There are a few ways of thinking about this. On one hand, you could say that as people become wealthier they will have higher expectations for what their municipal tax dollars can do for them. In economics-speak, we would say "complaints are a normal good", or, that complaints rise with income. It could also be the case that as people become wealthier and have more leisure time, they tend to be more willing to spend some of that leisure time calling 311. This story is consistent with the idea of an elderly neighbour being nitpicky or overusing the 311 service line - in other words, a "narc". 
 
 On the other hand, a higher number of 311 calls could be representative of a neighbourhood that is under-served or ignored by City departments. For example, in a neighbourhood that is properly served by City departments, a caller only has to notify the City of an issue once before the City responds and addresses the complaint. Meanwhile, in a neighbourhood that is under-served by the City, multiple callers may notify the City about the same complaint multiple times until the complaint is addressed. If we were to suppose that neighbourhoods with lower levels of income also have a larger number of calls to 311, this could be indicative that these neighbourhoods are under-served by City services. This is concerning as it would indicate that the political influence of individual citizens in Winnipeg is split along economic lines, and that being a resident of a wealthier neighbourhood guarantees you better access to City services.
 
 # Exploratory Analysis
+
 In order to answer this question I think it's important to first do some exploratory analysis of the data. Before we really get started, I've noticed that "Missed Garbage Collection" and "Missed Recycling Collection" could easily be represented as "Missed Household Waste Collection". Although, if it's the case that every missed garbage collection corresponds to a missed recycling collection, merging these two into one category would effectively be double counting and over represent the number of missed household waste pickups. So, let's see if they're statistically different:
 ```{r, echo=FALSE}
 t_test <-t.test(test_set$n[test_set$service_request == 'Missed Garbage Collection'], test_set$n[test_set$service_request=='Missed Recycling Collection'])
@@ -119,14 +121,16 @@ tab <- dplyr::rename(tab, Difference = estimate ,  Garbage_Mean = estimate1 ,  R
 formattable(tab[c("Difference", "Garbage_Mean", "Recycling_Mean", "T_Stat", "p.value")])
 
 ```
+
 It appears that when grouped by neighbourhood, the number of missed garbage pickups over the two year period is greater than the number of missed recycling pick ups. This means that a missed garbage pick up does not guarantee a missed recycling pick up. Let's take a look at how each different category of 311 call is related to one another. 
 ```{r, echo= FALSE}
 library(ggcorrplot)
 cor_table_set <- spread(test_set, service_request, n)
 corr_matrix <- cor(cor_table_set[,2:17], use = "complete.obs")
-ggcorrplot(corr_matrix, hc.order = TRUE,  method = "square", type ="lower", outline.color = "white") + theme(axis.text.x = element_text(size = 10), axis.text.y = element_text(size = 10))
-
+corr_plot1 <-ggcorrplot(corr_matrix, hc.order = TRUE,  method = "square", type ="lower", outline.color = "white") + theme(axis.text.x = element_text(size = 10), axis.text.y = element_text(size = 10))
+corr_plot1 +labs(title = "Correlation Matrix", subtitle = "311 Call Categories")
 ```
+
 Looking at the correlation matrix we can see that recycling and garbage missed pick ups are strongly correlated with one another, while litter container complaints and tree caterpillar complaints are also strongly correlated with one another. Both of these make intuitive sense, as it is probably often the case that a missed garbage pick up is due to either user error (not putting the bins out) or other factors (weather or construction that make doing a route in the proper time impossible), and litter containers that the city is responsible for are often in parks and other wooded areas, where there are an abundance of canker worms.
 
 I'm going to make a merged category for both recycling and garbage collection and title it "Missed Household Waste Collection". I think that the distinction between recycling and garbage pick ups is somewhat arbitrary for the purpose of understanding the difference among neighbourhood service levels, so I feel like it's fine to lump the two together, however I would understand if someone were to feel like this creates bias in the analysis. 
@@ -137,14 +141,17 @@ The data set contains 235 different neighbourhoods, so I'm only going to graph t
 ```{r, echo = FALSE}
  ggplot(most_calls, aes(neighbourhood, n)) + geom_col(fill = "deepskyblue4") + labs( x = "Neighbourhood", y = "Number of Calls to 311", title = "Calls to 311 by Neighbourhood, 2018 - 2019")
 ```
+
 We can see that the number of calls from William Whyte is almost double that of the next closest neighbourhood, St. Johns.
 ```{r, echo = FALSE}
  cityplot + theme(axis.text.x = element_text(face = "bold", color = "#993333", size = 6, angle = 20, hjust = 1))
 ```
+
 We can also see that neighbourhood livability complaints and missed household waste pickups dominate the number of calls to 311.
 ```{r, echo= FALSE}
 wwplot + theme(axis.text.x = element_text(face = "bold", color = "#993333", size = 8, angle = 20, hjust = 1))
 ```
+
 In William Whyte, the number of neighbourhood livability complaints is astronomical when compared to the other categories. Here are the top 5 categories of complaints, as well as graffiti. It's important to note that the scale of the y-axis for each category changes for ease of readability in each graph. 
 ```{r, echo=FALSE}
 ggarrange(missed_household_waste_pickup_plot, neighbourhood_liveability_complaint_plot, nrow = 2)
@@ -153,6 +160,7 @@ ggarrange(water_main_leak_plot, graffiti_plot, nrow = 2)
 ```
 
 # Additional Graphs
+
 One category that I feel is near and dear to the average Winnipegger's heart is the poor condition of the roads in Winnipeg. Another few issues, if I were to think of someone like my Dad as the average Winnipegger, would be that the presence of graffiti is distasteful or that the trash not being picked up is a public policy failure.  (No offense to my dad, I'm sure he wouldn't really say that if you were to ask him, it's just easy to use him or someone of his age/demographic as a straw-man).
 With that being said, here are three additional graphs that are specially formatted for each respective issue:
 ```{r, echo = FALSE}
