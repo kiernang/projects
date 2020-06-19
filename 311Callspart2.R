@@ -1,3 +1,10 @@
+library(tidyr)
+library(dplyr)
+library(wesanderson)
+library(ggplot2)
+library(ggpubr)
+library(readr)
+library(ggpattern)
 #Building a full neighbourhood characteristic dataset
 #Starting with income which was pre-cleaned sort of
 income_neighbourhoods <- read_excel("~/Downloads/2011 Income by Neighbourhood.xlsx")
@@ -50,6 +57,15 @@ merged_neighbourhood <- right_join(merged_neighbourhood,house_qualities_premerge
 merged_neighbourhood <- rename(merged_neighbourhood, rental_rate = percent_of_occupied_private_dwellings_that_are_rented)
 merged_neighbourhood <- merged_neighbourhood %>%
 mutate(low_income_rate = (low_inc_1864/total_population), avg_payment = ((rental_rate*average_gross_rent) + (1-rental_rate)*average_owner_major_payments), deprec_rate = dwellings_requiring_major_repairs/total_occupied_private_dwellings, old_house_stock = before_1960/total_occupied_private_dwellings, new_house_stock = y2006_2011/total_occupied_private_dwellings)
-
+# Adding in our other dataset..
+calls311 <-read_csv("~/Downloads/311_Service_Request201819.csv")
+names(calls311) <- tolower(names(calls311))
+names(calls311) <- gsub(' ', '_', names(calls311))
+calls311$location_1 <- gsub('\\)','',gsub('\\(','',calls311$location_1))
+calls311<- calls311 %>%
+  separate(location_1, c('latitude','longitude'), ', ')
+calls311$date <- as.POSIXct(calls311$date, tz = "America/Winnipeg", "%m/%d/%Y %I:%M:%S %p")
+calls_by_day <-  calls311 %>% count(day_of_year = as.Date(Date))
+day_plot <-ggplot(calls_by_day,aes(day_of_year,n))+geom_line(colour = "darkorchid4")+labs(title = "Daily 311 Calls", subtitle = "2018 - 2019", x = "Day of Year", y = "Number of Calls") + theme(plot.margin = unit(c(.5,4,.5,.5), "cm"))
 
 
