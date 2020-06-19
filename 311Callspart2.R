@@ -67,5 +67,10 @@ calls311<- calls311 %>%
 calls311$date <- as.POSIXct(calls311$date, tz = "America/Winnipeg", "%m/%d/%Y %I:%M:%S %p")
 calls_by_day <-  calls311 %>% count(day_of_year = as.Date(Date))
 day_plot <-ggplot(calls_by_day,aes(day_of_year,n))+geom_line(colour = "darkorchid4")+labs(title = "Daily 311 Calls", subtitle = "2018 - 2019", x = "Day of Year", y = "Number of Calls") + theme(plot.margin = unit(c(.5,4,.5,.5), "cm"))
+calls_premerge_true <- calls311 %>% group_by(neighbourhood) %>%
+tally()
+right_join(merged_neighbourhood, calls_premerge_true)
+merged_neighbourhood <-right_join(merged_neighbourhood, calls_premerge_true)
+merged_neighbourhood <- rename(merged_neighbourhood, calls = n)
 
 
