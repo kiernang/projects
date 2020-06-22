@@ -5,6 +5,7 @@ library(ggplot2)
 library(ggpubr)
 library(readr)
 library(ggpattern)
+library(readxl)
 #Building a full neighbourhood characteristic dataset
 #Starting with income which was pre-cleaned sort of
 income_neighbourhoods <- read_excel("~/Downloads/2011 Income by Neighbourhood.xlsx")
@@ -65,12 +66,28 @@ calls311$location_1 <- gsub('\\)','',gsub('\\(','',calls311$location_1))
 calls311<- calls311 %>%
   separate(location_1, c('latitude','longitude'), ', ')
 calls311$date <- as.POSIXct(calls311$date, tz = "America/Winnipeg", "%m/%d/%Y %I:%M:%S %p")
-calls_by_day <-  calls311 %>% count(day_of_year = as.Date(Date))
+calls_by_day <-  calls311 %>% count(day_of_year = as.Date(date))
 day_plot <-ggplot(calls_by_day,aes(day_of_year,n))+geom_line(colour = "darkorchid4")+labs(title = "Daily 311 Calls", subtitle = "2018 - 2019", x = "Day of Year", y = "Number of Calls") + theme(plot.margin = unit(c(.5,4,.5,.5), "cm"))
 calls_premerge_true <- calls311 %>% group_by(neighbourhood) %>%
 tally()
 right_join(merged_neighbourhood, calls_premerge_true)
 merged_neighbourhood <-right_join(merged_neighbourhood, calls_premerge_true)
 merged_neighbourhood <- rename(merged_neighbourhood, calls = n)
+#Wealthiest Neighbourhoods
+wealthiest <- merged_neighbourhood %>%
+top_n(n = 6, wt = median_income)
+#Poorest Neighbourhoods
+poorest <- merged_neighbourhood %>%
+top_n(n = -6, wt = median_income) %>%
+arrange(desc(median_income))
+# setting the quintiles
+merged_neighbourhood <- merged_neighbourhood %>%
+mutate(income_quintile = ntile(median_income,5))
 
-
+# I also have housing price data, assessed value data, and tree counts.
+tree_inventory <- read_csv("~/Downloads/Tree_Inventory.csv")
+names(tree_inventory) <- tolower(names(tree_inventory))
+names(tree_inventory) <- gsub(' ', '_', names(tree_inventory))
+tree_inventory <- tree_inventory %>% group_by(neighbourhood) %>% tally()
+merged_neighbourhood <-inner_join(merged_neighbourhood, tree_inventory)
+merged_neighbourhood <- rename(merged_neighbourhood, tree_count = n)
