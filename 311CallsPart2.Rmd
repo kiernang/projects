@@ -1,0 +1,16 @@
+---
+title: "311 Calls Part 2"
+author: "Kiernan Gange"
+date: "28/06/2020"
+output: html_document
+---
+Previously I looked at Winnipeg 311 calls by neighbourhood in order to determine if there was any discernible difference between the way that different neighbourhoods use the 311 line. There's a few perspectives here. One, if wealthier neighbourhoods tend to call 311 more often, in economics speak we would say that complaints are a 'normal good'. On the other hand, if complaints fall with income, we would say that complaints are an 'inferior good'. An alternative perspective, void from economics-speak, would be that richer neighbourhoods receive preferential treatment over poorer neighbourhoods in terms of city services. For example, it could be the case that in a poorer neighbourhood it takes multiple calls about the same issue in order for it to be addressed - therefore the number of calls would be substantially higher in poorer neighbourhoods as opposed to wealthy neighbourhoods. 
+![311 Calls in Lower Income Neighbourhoods](/Users/KiernanGange/Pictures/infographic_311_calls.png)
+Meanwhile, in a wealthier neighbourhood the City is reluctant to drag their feet and addresses the issue right away. 
+![311 Calls in Higher Income Neighbourhoods](/Users/KiernanGange/Pictures/Infographic_311_calls2.png)
+The final motivation is that I am still unemployed and that I probably need to be doing something productive with my time. 
+
+Formally, since we care about how city services differ between neighbourhoods as income levels change, I'm going to conduct a number of t-tests after dividing the city neighbourhoods into quintiles. After that, I'll perform a series of linear regressions to determine if median income of a neighbourhood has a statistically significant impact on the number of calls to 311. In order to do this, I'm going to aggregate the number of calls by neighbourhood. This reduces our sample size from 108,081 observations to 193 observations - so, when we have a sample size this small, it's difficult to say with certainty that these results are going to be replicable or free of various other issues. A popular rule of thumb is that a good model must have at least 10 observation per variables, and there's no way I'll be including 19 variables in the regression. 
+
+
+
