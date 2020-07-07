@@ -4,13 +4,209 @@ author: "Kiernan Gange"
 date: "28/06/2020"
 output: html_document
 ---
+```{r, include = FALSE}
+library(formattable)
+library(tidyr)
+library(generics)
+library(tidyverse)
+library(dplyr)
+library(wesanderson)
+library(ggplot2)
+library(ggpubr)
+library(readr)
+library(ggpattern)
+library(readxl)
+library(shiny)
+library(rgdal)
+library(leaflet)
+library(htmltools)
+library(knitr)
+library(purrr)
+library(stargazer)
+#Building a full neighbourhood characteristic dataset
+#Starting with income which was pre-cleaned sort of
+income_neighbourhoods <- read_excel("~/Downloads/2011 Income by Neighbourhood.xlsx")
+names(income_neighbourhoods) <- tolower(names(income_neighbourhoods))
+names(income_neighbourhoods) <- gsub(" ", "_", names(income_neighbourhoods))
+income_neighbourhoods$neighbourhood <- gsub(" - ", "-", income_neighbourhoods$neighbourhood)
+income_neighbourhoods <- subset(income_neighbourhoods, select = -c(`one_parent_-_female...20`, `one_parent_-_male...21`))
+income_neighbourhoods <- subset(income_neighbourhoods, select = -c(`one_parent_-_female...9`, `one_parent_-_male...10`))
+#Moving onto housing
+house_qualities <- read_excel("~/Downloads/2011 Dwelling Condition by Neighbourhood.xls",
+na = "-")
+names(house_qualities) <- tolower(names(house_qualities))
+names(house_qualities) <- gsub(" ", "_", names(house_qualities))
+house_qualities$neighbourhood <- gsub(" - ", "-", house_qualities$neighbourhood)
+#Onto Rental data
+housing_costs <- read_excel("~/Downloads/2011 Dwelling Costs by Neighbourhood.xls")
+names(housing_costs)<- tolower(gsub(" ", "_", names(housing_costs)))
+names(housing_costs) <- gsub(",","",names(housing_costs))
+housing_costs <- housing_costs[-c(194,195),]
+housing_costs$neighbourhood <- gsub(" - ", "-", housing_costs$neighbourhood)
+#Onto Population
+neighbourhood_pop <- read_excel("~/Downloads/2011 Population by Neighbourhood.xls",
+na = "-", skip = 22)
+names(neighbourhood_pop)<- tolower(gsub(c(" ","-"),"_", names(neighbourhood_pop)))
+names(neighbourhood_pop)<- tolower(gsub("-","_", names(neighbourhood_pop)))
+neighbourhood_pop <- subset(neighbourhood_pop, select = -c(`#`))
+neighbourhood_pop$neighbourhood <- gsub(" - ", "-", income_neighbourhoods$neighbourhood)
+
+#Onto 60 +
+pop_60 <- read_excel("~/Downloads/2011 Population Age 60 and Over by Neighbourhood.xlsx",
+col_types = c("skip", "text", "numeric",
+"numeric", "numeric", "numeric",
+"skip", "numeric", "skip", "numeric",
+"skip", "numeric", "skip", "numeric",
+"skip", "numeric", "skip", "skip"),
+na = "-", skip = 23)
+names(pop_60)<-tolower(gsub(" ","_", names(pop_60)))
+pop_60 <- subset(pop_60, select = -c(percent_of_total_population________60_and_over))
+pop_60$neighbourhood <- gsub(" - ", "-", pop_60$neighbourhood)
+#Prepping objects for merging
+income_premerge <- subset(income_neighbourhoods, select  = c(neighbourhood, average_income,median_income,low_inc_1864))
+pop_60_premerge<- subset(pop_60, select = c(neighbourhood, total_population, population_age_60_and_over))
+names(housing_costs) <-gsub("-","_",names(housing_costs))
+names(housing_costs) <-gsub("\n","",names(housing_costs))
+housing_costs_premerge <- subset(housing_costs, select = c(neighbourhood, percent_of_occupied_private_dwellings_that_are_rented, average_gross_rent, tenant_occupied_non_farm_non_reserve_dwellings, average_value_of_dwelling, average_owner_major_payments, owner_occupied_non_farm_non_reserve_dwellings))
+neighbourhood_pop_premerge <- subset(neighbourhood_pop, select = c(1,2,4,5))
+house_qualities_premerge <- subset(house_qualities, select = c(1,2,3,4,5,10))
+
+#Merging datasets
+merged_neighbourhood <- right_join(income_premerge,pop_60_premerge)
+merged_neighbourhood <- right_join(merged_neighbourhood,housing_costs_premerge)
+merged_neighbourhood <- right_join(merged_neighbourhood,house_qualities_premerge)
+merged_neighbourhood <- rename(merged_neighbourhood, rental_rate = percent_of_occupied_private_dwellings_that_are_rented)
+merged_neighbourhood <- merged_neighbourhood %>%
+mutate(low_income_rate = (low_inc_1864/total_population), avg_payment = ((rental_rate*average_gross_rent) + (1-rental_rate)*average_owner_major_payments), deprec_rate = dwellings_requiring_major_repairs/total_occupied_private_dwellings, old_house_stock = before_1960/total_occupied_private_dwellings, new_house_stock = y2006_2011/total_occupied_private_dwellings)
+# Adding in our other dataset..
+calls311 <-read_csv("~/Downloads/311_Service_Request201819.csv")
+names(calls311) <- tolower(names(calls311))
+names(calls311) <- gsub(' ', '_', names(calls311))
+calls311$location_1 <- gsub('\\)','',gsub('\\(','',calls311$location_1))
+calls311<- calls311 %>%
+  separate(location_1, c('latitude','longitude'), ', ')
+calls311$date <- as.POSIXct(calls311$date, tz = "America/Winnipeg", "%m/%d/%Y %I:%M:%S %p")
+calls_by_day <-  calls311 %>% count(day_of_year = as.Date(date))
+day_plot <-ggplot(calls_by_day,aes(day_of_year,n))+geom_line(colour = "darkorchid4")+labs(title = "Daily 311 Calls", subtitle = "2018 - 2019", x = "Day of Year", y = "Number of Calls") + theme(plot.margin = unit(c(.5,4,.5,.5), "cm"))
+calls_premerge_true <- calls311 %>% group_by(neighbourhood) %>%
+tally()
+calls_premerge_true$neighbourhood[calls_premerge_true$neighbourhood == 'Logan-C.p.r.'] <- "Logan-C.P.R."
+merged_neighbourhood <-right_join(merged_neighbourhood, calls_premerge_true)
+merged_neighbourhood <- rename(merged_neighbourhood, calls = n)
+#Wealthiest Neighbourhoods
+wealthiest <- merged_neighbourhood %>%
+top_n(n = 6, wt = median_income)
+#Poorest Neighbourhoods
+poorest <- merged_neighbourhood %>%
+top_n(n = -6, wt = median_income) %>%
+arrange(desc(median_income))
+# setting the quintiles
+merged_neighbourhood <- merged_neighbourhood %>%
+mutate(income_quintile = ntile(median_income,5))
+
+# I also have housing price data, assessed value data, and tree counts.
+tree_inventory <- read_csv("~/Downloads/Tree_Inventory.csv")
+names(tree_inventory) <- tolower(names(tree_inventory))
+names(tree_inventory) <- gsub(' ', '_', names(tree_inventory))
+tree_inventory <- tree_inventory %>% group_by(neighbourhood) %>% tally()
+tree_inventory$neighbourhood[tree_inventory$neighbourhood == "St. John'S"] <- "St. John's"
+tree_inventory$neighbourhood[tree_inventory$neighbourhood == "St. John'S Park"] <- "St. John's Park"
+tree_inventory$neighbourhood[tree_inventory$neighbourhood == "Omand'S Creek Industrial"] <- "Omand's Creek Industrial"
+merged_neighbourhood <-full_join(merged_neighbourhood, tree_inventory)
+merged_neighbourhood <- rename(merged_neighbourhood, tree_count = n)
+analysis_set <- merged_neighbourhood[!is.na(merged_neighbourhood$income_quintile),]
+### T test efunction
+multi.tests <- function(fun = t.test, df, vars, group.var, ...) {
+  sapply(simplify = FALSE,                                    # sapply(simplify=T) better, elements named
+         vars,                                                # loop on vector of outcome variable names
+         function(var) {
+           formula <- as.formula(paste(var, "~", group.var))# create a formula with outcome and grouping var.
+           fun(data = df, formula, ...)                     # perform test with a given fun, default t.test
+         }
+  )
+}
+test_set <- filter(merged_neighbourhood, (income_quintile == 1 | income_quintile == 5))
+test_set$group <- ifelse(test_set$income_quintile == 1, "Poor", "Rich")
+
+tests<- multi.tests(fun = t.test, df = test_set,
+vars = c("total_population", "population_age_60_and_over", "rental_rate", "old_house_stock", "calls", "tree_count"),
+group.var =  "group"
+)
+tab <- map_df(tests, tidy)
+names(tab) <- c("Difference", "Low Income Mean", "High Income Mean", "T-score", "P Value", "Degrees of Freedom", "Lower Estimate", "Upper Estimate", "Method", "Alternative")
+tab <- as.data.frame(tab)
+rownames(tab) <- c("Total Population", "Population age 60+", "Rental Rate", "Old House Stock", "Calls", "Tree Count")
+tab<- tab[,1:8]
+tab$`P Value` <- round(tab$`P Value`, 5)
+tab[,1:3] <- round(tab[,1:3], 2)
+tab[,4] <- round(tab[,4], 4)
+tab[,6:8] <- round(tab[,6:8], 4)
+non_log_model <- lm(calls ~ median_income + total_population + population_age_60_and_over + rental_rate + old_house_stock + tree_count + deprec_rate, data = merged_neighbourhood)
+log_model <- lm(log1p(calls) ~ log1p(median_income) + log1p(total_population) + log1p(population_age_60_and_over) + rental_rate + old_house_stock + log1p(tree_count) + deprec_rate, data = merged_neighbourhood)
+
+
+```
+
+# Preamble
 Previously I looked at Winnipeg 311 calls by neighbourhood in order to determine if there was any discernible difference between the way that different neighbourhoods use the 311 line. There's a few perspectives here. One, if wealthier neighbourhoods tend to call 311 more often, in economics speak we would say that complaints are a 'normal good'. On the other hand, if complaints fall with income, we would say that complaints are an 'inferior good'. An alternative perspective, void from economics-speak, would be that richer neighbourhoods receive preferential treatment over poorer neighbourhoods in terms of city services. For example, it could be the case that in a poorer neighbourhood it takes multiple calls about the same issue in order for it to be addressed - therefore the number of calls would be substantially higher in poorer neighbourhoods as opposed to wealthy neighbourhoods. 
 ![311 Calls in Lower Income Neighbourhoods](/Users/KiernanGange/Pictures/infographic_311_calls.png)
+
 Meanwhile, in a wealthier neighbourhood the City is reluctant to drag their feet and addresses the issue right away. 
 ![311 Calls in Higher Income Neighbourhoods](/Users/KiernanGange/Pictures/Infographic_311_calls2.png)
+
+
 The final motivation is that I am still unemployed and that I probably need to be doing something productive with my time. 
 
 Formally, since we care about how city services differ between neighbourhoods as income levels change, I'm going to conduct a number of t-tests after dividing the city neighbourhoods into quintiles. After that, I'll perform a series of linear regressions to determine if median income of a neighbourhood has a statistically significant impact on the number of calls to 311. In order to do this, I'm going to aggregate the number of calls by neighbourhood. This reduces our sample size from 108,081 observations to 193 observations - so, when we have a sample size this small, it's difficult to say with certainty that these results are going to be replicable or free of various other issues. A popular rule of thumb is that a good model must have at least 10 observation per variables, and there's no way I'll be including 19 variables in the regression. 
 
+# The Data
+I've taken a number of neighbourhood level variables from various data sets found on the City of Winnipeg website. Included below is a dashboard where you can explore various neighbourhood level variables by neighbourhood. A couple things to note: First, because there exist extreme outliers I divided each neighbourhood into quintiles. If you want to see how the quintiles are broken up, hover your mouse over the legend. Second, due to (what I'm assuming) sample size issues, there are large numbers of neighbourhoods with missing data. Lastly, for the 'Tree Count' variable, this is only city-owned trees. That's why areas like Assiniboine Park have relatively small counts, as those trees are not owned by the City of Winnipeg. You can access the dashboard [here.](https://kiernangange.shinyapps.io/WinnipegMap/)
 
 
+
+
+# Modeling
+If we want to know if different neighbourhoods in Winnipeg interact with city services differently dependent on their income, we can perform a series of analyses that will be able to indicate whether or not our hypothesis is false. First, we can conduct a series of t-tests to determine if a number of variables differ between income quintiles. These variables are: total population; population aged 60 and over; rental rate; percent of houses built before 1960; calls to 311; and the number of city owned trees within the neighbourhood. After that, we can set up a linear regression with the number of calls to 311 as our dependent variable, and income as our variable of interest on the right hand side. This would look something like this:
+$$
+ Calls = X\beta + \beta_{1}Income + \epsilon
+$$
+Where $X\beta$ is a matrix of a various controls and $\beta_{1}$ is the co-efficient on median income. The controls that are included were chosen if it could be conceivable that they would generate calls to 311. For example, the more trees there are in a neighbourhood, the more opportunity for large branches to fall; the more depreciated houses are, the more neighbourhood liveability complaints, so on and so forth. I included the population as well as elderly population numbers as well. One variable that is maybe a questionable inclusion is rental rate, as there may be some sort of traditional economics story that people are less willing to expend effort calling 311 if they do not actually own the property. One issue is that including this variable may be confounding the effect on income, as lower incomes rent more than higher incomes.
+
+Since we know that income has a right skewed distribution, we can apply a log transformation to both sides, which will also make our coefficients more easily interpretable. This is primarily due to being able to quickly interpret a one percent change in income leads to a one percent change in 311 calls, although, it's not that difficult to conceptualize every additional dollar of a neighbourhoods median income leads to however many fractions of a 311 call, but regardless, I'll apply the transformation either way. The final benefit of the log transformation is that if we suspect that the relationship between a number of variables and the number of 311 calls is non-linear, the transformation into log form allows us to infer a linear relationship between the variables. 
+
+Before we get started, here is a plot showing the difference between log-transformed data and non-log transformed data.
+```{r, results= 'asis',echo = FALSE, warning = FALSE}
+ggplot(merged_neighbourhood, aes(median_income, calls)) + geom_point( col = "darkorchid4") + geom_smooth(method = "lm", se = FALSE) + labs( x = "Median Income", y = "Calls to 311", title = "Median Income vs Calls to 311")
+```
+
+It looks like there is a negative relationship between the two, but it is difficult to tell because of various outliers.
+
+```{r, results= 'asis',echo = FALSE, warning  = FALSE}
+ggplot(merged_neighbourhood, aes(log1p(median_income), log1p(calls))) + geom_point( col = "darkorchid4") + geom_smooth(method = "lm", se = FALSE) + labs( x = "Median Income", y = "Calls to 311", title = "Median Income vs Calls to 311 (Both Logged)")
+```
+
+When we apply the log transformation, we still see that there is a slightly negative relationship between median income and calls to 311.
+
+# Results 
+### T tables
+```{r, echo = FALSE}
+formattable(tab)
+```
+So, unsurprisingly, the lower income areas tend to be primarily made up of older houses and more renters. Maybe surprisingly, richer neighbourhoods tend to be more wooded, which is probably driven by the amenity level of parks. The number of calls to 311 is weakly (at a 10% level)  significant, suggesting that poorer neighbourhoods may tend to call 311 more frequently. This could be driven by the large number of calls placed in William Whyte.
+
+```{r, results= 'asis', echo = FALSE}
+stargazer(log_model, non_log_model, type = 'html', title="Regression Results",align=TRUE, dep.var.labels=c("Logged Calls to 311", "Calls to 311"), covariate.labels=c("Logged Median Income","Logged Total Pop.","Logged Pop. 60+", "Median Income", "Total Pop.", "Pop. 60+", "Rental Rate","Old House Stock", "Logged Tree Count", "Tree Count", "Deprecated Rate"),omit.stat=c("LL","ser","f"), no.space=FALSE, header = FALSE)
+```
+
+
+Before we get started, deprecated rate measures the number of houses in a neighbourhood that are in major need of repairs divided by the number of total houses, or, the number of deprecated houses divided by houses.
+Looking at the table above, the only variable that is significant when the log transformation is not applied is population. This is probably a little surprising - but it may be the case that there is simply no linear relationship between the various variables. When we apply the log transformation, a number of variables do become significant, and the sign on our variable of interest is in the right direction. This supports the hypothesis that poorer neighbourhoods tend to receive fewer city services. On the other hand, there is a negative sign on our 60+ variable, suggesting that elderly people do not enjoy snitching on neighbours as much as previously believed. Of particular concern is the high $ R^2 $ values. The adjusted $ R^2 $ is .787, which implies that 78.7% of variation in our observations are explained by our model. This seems unusual and is probably indicative that there is something wrong with our model - even that we have engaged in overfitting. It seems more likely that there would be some degree of randomness in this model, such as pipes bursting or other natural events causing citizens to call 311. On the other hand, I'm not getting paid to do this analysis and am doing it in my spare time, so I guess I can just say "it is what it is" and move on. 
+
+# Conclusion
+Before moving on, I forgot one final graph from the previous article that I would like to include:
+
+```{r, results= "asis", echo = FALSE}
+day_plot
+```
+
+Anyways. I used a series of linear regression techniques and combined city data from a number of sources to determine if income plays a significant role in determining the number of 311 calls a neighbourhood makes. I found a non-linear relationship between the number of 311 calls and the median income of a neighbourhood. The adjusted $R^2$ of my model was relatively high, which indicates to me that the model was overfitted. Next I'll probably do something with unsupervised learning and house assessment values or some other machine learning project.
