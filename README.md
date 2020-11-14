@@ -7,5 +7,5 @@ I use publicly available data from John Hopkins University. I group American dat
 Fairly straightforward methodology. To calculate the scaled number of cases in Manitoba, I multiply the number of cases in Manitoba per given day by the ratio between the population of the selected region and Manitoba. I.e. Cases_Daily* (Pop_notMB/Pop_MB)
 
 # Other Considerations
-I am not a dashboard developer, so this may be a little janky. I didn't really want to figure out how to cache the data so the dashboard takes a little while to load as the script is actually executing in place. ¯\_(ツ)_/¯.
+I am not a dashboard developer, so this may be a little janky. I didn't really want to figure out how to cache the data so the dashboard takes a little while to load as the script is actually executing in place.  ¯\_(ツ)_/¯.
 
